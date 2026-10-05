@@ -1,5 +1,5 @@
 ﻿# ---- Stage 1: Base PHP ----
-FROM php:8.2-fpm-alpine AS php-base
+FROM php:8.4-fpm-alpine AS php-base
 
 RUN apk add --no-cache bash nginx curl gettext su-exec tini ca-certificates \
     libpng libzip oniguruma \
@@ -44,3 +44,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD curl --fail --silent "http://127.0.0.1:${PORT}/up" > /dev/null || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/app-entrypoint"]
+
