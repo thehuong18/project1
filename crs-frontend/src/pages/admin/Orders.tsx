@@ -1040,9 +1040,9 @@ export const Orders: React.FC = () => {
                             item.image?.startsWith('http') || item.image?.startsWith('data:')
                               ? item.image
                               : item.image?.startsWith('/storage/')
-                              ? `http://localhost:8000${item.image}`
+                              ? `${import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000'}${item.image}`
                               : item.image
-                              ? `http://localhost:8000/storage/${item.image}`
+                              ? `${import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000'}/storage/${item.image}`
                               : 'https://images.unsplash.com/photo-1511886929837-354d827aae26?auto=format&fit=crop&w=300&q=80'
                           }
                           alt={item.name}

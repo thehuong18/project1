@@ -31,12 +31,12 @@ const formatImgUrl = (url?: string): string => {
     return url
   }
   if (url.startsWith('/storage/')) {
-    return `http://localhost:8000${url}`
+    return `${import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000'}${url}`
   }
   if (url.startsWith('/')) {
-    return `http://localhost:8000/storage${url}`
+    return `${import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000'}/storage${url}`
   }
-  return `http://localhost:8000/storage/${url}`
+  return `${import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000'}/storage/${url}`
 }
 
 const statusConfig: Record<

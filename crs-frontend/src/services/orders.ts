@@ -118,7 +118,7 @@ export function mapBackendOrder(raw: Record<string, any>): Order {
   const items: OrderItem[] = (raw.items ?? raw.order_items ?? []).map((i: Record<string, any>) => {
     let img = i.image ?? i.product_image ?? i.product?.image ?? i.product?.image_url ?? (Array.isArray(i.images) ? i.images[0] : '') ?? ''
     if (img && typeof img === 'string' && !img.startsWith('http') && !img.startsWith('data:')) {
-      img = img.startsWith('/') ? `http://localhost:8000${img}` : `http://localhost:8000/storage/${img}`
+      img = img.startsWith('/') ? `${import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000'}${img}` : `${import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000'}/storage/${img}`
     }
     return {
       id: Number(i.product_id ?? i.id),

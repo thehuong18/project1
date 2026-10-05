@@ -16,8 +16,8 @@ const getCartItemImageUrl = (item: any) => {
     ''
   if (!raw) return 'https://images.unsplash.com/photo-1511886929837-354d827aae26?auto=format&fit=crop&w=300&q=80'
   if (raw.startsWith('http') || raw.startsWith('data:')) return raw
-  if (raw.startsWith('/storage/')) return `http://localhost:8000${raw}`
-  return `http://localhost:8000/storage/${raw}`
+  if (raw.startsWith('/storage/')) return `${import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000'}${raw}`
+  return `${import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000'}/storage/${raw}`
 }
 
 //Ngăn kéo giỏ hàng trượt ra từ cạnh màn hình.

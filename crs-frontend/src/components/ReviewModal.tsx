@@ -123,8 +123,8 @@ export function ReviewModal({
                     productImage?.startsWith('http') || productImage?.startsWith('data:')
                       ? productImage
                       : productImage?.startsWith('/storage/')
-                      ? `http://localhost:8000${productImage}`
-                      : `http://localhost:8000/storage/${productImage || ''}`
+                      ? `${import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000'}${productImage}`
+                      : `${import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000'}/storage/${productImage || ''}`
                   }
                   alt={productName}
                   className="h-12 w-12 rounded-xl object-cover border border-white/10 bg-slate-950"
