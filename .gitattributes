@@ -1,0 +1,8 @@
+﻿# Đảm bảo tất cả file .sh giữ LF line endings
+*.sh text eol=lf
+
+# Các file text khác dùng LF
+*.php text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+Dockerfile text eol=lf
