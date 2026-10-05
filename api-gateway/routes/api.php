@@ -13,26 +13,21 @@ Route::any('{service}/{path?}', function (Request $request, string $service, ?st
     ];
 
     $serviceRoutes = [
-        'auth' => 'auth',
-        'users' => 'auth',
-        'addresses' => 'auth',
-        'user' => 'auth',
-        'admin' => 'auth',
-        'chat' => 'auth',
-        'catalog' => 'catalog',
-        'products' => 'catalog',
+        'auth'     => 'auth',
+        'users'    => 'auth',
+
+        // Thêm mapping cho frontend:
+        'products'   => 'catalog',
         'categories' => 'catalog',
-        'brands' => 'catalog',
-        'banners' => 'catalog',
-        'order' => 'order',
-        'orders' => 'order',
-        'cart' => 'order',
-        'coupons' => 'order',
-        'reviews' => 'order',
-        'shipping' => 'order',
-        'payment' => 'payment',
-        'payments' => 'payment',
-        'finance' => 'payment',
+        'brands'     => 'catalog',
+        'banners'    => 'catalog',
+        'reviews'    => 'catalog',
+
+        'orders'     => 'order',
+        'coupons'    => 'order',
+
+        'payments'   => 'payment',
+        'momo'       => 'payment',
     ];
 
     $targetService = $serviceRoutes[$service] ?? null;
