@@ -1,0 +1,29 @@
+# Dependencies
+**/node_modules/
+**/vendor/
+
+# Build outputs
+**/dist/
+**/dist-ssr/
+**/build/
+
+# Logs & cache
+**/*.log
+**/.phpunit.cache/
+**/storage/logs/*.log
+**/storage/framework/cache/
+**/storage/framework/sessions/
+**/storage/framework/views/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE & Editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
