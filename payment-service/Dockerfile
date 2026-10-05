@@ -1,4 +1,4 @@
-﻿# ---- Stage 1: Base PHP ----
+# ---- Stage 1: Base PHP ----
 FROM php:8.4-fpm-alpine AS php-base
 
 RUN apk add --no-cache bash nginx curl gettext su-exec tini ca-certificates \
