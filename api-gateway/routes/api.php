@@ -1,33 +1,38 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Route;
 
 Route::any('{service}/{path?}', function (Request $request, string $service, ?string $path = null) {
     $serviceMap = [
-        'auth' => env('AUTH_SERVICE_URL', 'http://127.0.0.1:8001/api'),
-        'catalog' => env('CATALOG_SERVICE_URL', 'http://127.0.0.1:8002/api'),
-        'order' => env('ORDER_SERVICE_URL', 'http://127.0.0.1:8003/api'),
-        'payment' => env('PAYMENT_SERVICE_URL', 'http://127.0.0.1:8004/api'),
+        'auth'    => env('AUTH_SERVICE_URL',    'http://127.0.0.1:8001'),
+        'catalog' => env('CATALOG_SERVICE_URL', 'http://127.0.0.1:8002'),
+        'order'   => env('ORDER_SERVICE_URL',   'http://127.0.0.1:8003'),
+        'payment' => env('PAYMENT_SERVICE_URL', 'http://127.0.0.1:8004'),
     ];
 
     $serviceRoutes = [
-        'auth'     => 'auth',
-        'users'    => 'auth',
-
-        // Thêm mapping cho frontend:
-        'products'   => 'catalog',
-        'categories' => 'catalog',
-        'brands'     => 'catalog',
-        'banners'    => 'catalog',
-        'reviews'    => 'catalog',
-
-        'orders'     => 'order',
-        'coupons'    => 'order',
-
-        'payments'   => 'payment',
-        'momo'       => 'payment',
+        'auth'      => 'auth',
+        'users'     => 'auth',
+        'addresses' => 'auth',
+        'user'      => 'auth',
+        'admin'     => 'auth',
+        'chat'      => 'auth',
+        'catalog'   => 'catalog',
+        'products'  => 'catalog',
+        'categories'=> 'catalog',
+        'brands'    => 'catalog',
+        'banners'   => 'catalog',
+        'order'     => 'order',
+        'orders'    => 'order',
+        'cart'      => 'order',
+        'coupons'   => 'order',
+        'reviews'   => 'order',
+        'shipping'  => 'order',
+        'payment'   => 'payment',
+        'payments'  => 'payment',
+        'finance'   => 'payment',
     ];
 
     $targetService = $serviceRoutes[$service] ?? null;
@@ -36,7 +41,7 @@ Route::any('{service}/{path?}', function (Request $request, string $service, ?st
         abort(404, 'Service not found.');
     }
 
-    $targetPath = trim($service . '/' . (string) ($path ?? ''), '/');
+    $targetPath = 'api/' . trim($service . '/' . (string) ($path ?? ''), '/');
     $targetUrl = rtrim($serviceMap[$targetService], '/') . '/' . $targetPath;
 
     $forwardedHeaders = [
