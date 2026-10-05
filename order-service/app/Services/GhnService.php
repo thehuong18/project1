@@ -10,8 +10,11 @@ use Illuminate\Support\Facades\Log;
 class GhnService
 {
     protected string $token;
+
     protected int $shopId;
+
     protected string $baseUrl;
+
     protected int $fromDistrictId;
 
     public function __construct()
@@ -142,11 +145,21 @@ class GhnService
     {
         $order->loadMissing('items');
 
+        $toDistrictId = (int) ($customData['to_district_id'] ?? $order->to_district_id ?? 0);
+        $toWardCode = trim((string) ($customData['to_ward_code'] ?? $order->to_ward_code ?? ''));
+        $toName = trim((string) ($order->shipping_name ?? ''));
+        $toPhone = trim((string) ($order->phone ?: ($order->shipping_phone ?? '')));
+        $toAddress = trim((string) ($order->shipping_address ?? ''));
+
+        if ($toDistrictId < 1 || $toWardCode === '' || $toName === '' || $toPhone === '' || $toAddress === '') {
+            throw new Exception('Đơn hàng thiếu tên, số điện thoại hoặc địa chỉ GHN hợp lệ (quận/huyện, phường/xã).');
+        }
+
         $items = $order->items->map(fn ($item) => [
             'name' => $item->product_name ?? 'Sản phẩm thể thao',
             'code' => $item->sku ?? 'SP-'.$item->product_id,
             'quantity' => (int) $item->quantity,
-            'price' => (int) $item->price,
+            'price' => (int) $item->unit_price,
             'weight' => 300,
         ])->toArray();
 
@@ -161,18 +174,11 @@ class GhnService
 
         $totalWeight = max(300, (int) ($customData['weight'] ?? $order->items->sum(fn ($i) => ((int) ($i->quantity ?: 1)) * 300)));
 
-        $toDistrictId = !empty($customData['to_district_id'])
-            ? (int) $customData['to_district_id']
-            : (!empty($order->to_district_id) ? (int) $order->to_district_id : 1442);
-
-        $toWardCode = !empty($customData['to_ward_code'])
-            ? (string) $customData['to_ward_code']
-            : (!empty($order->to_ward_code) ? (string) $order->to_ward_code : '20110');
         $shopId = (int) config('services.ghn.shop_id', env('GHN_SHOP_ID', $this->shopId));
 
         $payload = [
             'shop_id' => $shopId,
-            'client_order_code' => $order->order_number ?: ($order->order_code ?: ('ORD-' . $order->id)),
+            'client_order_code' => $order->order_number ?: ($order->order_code ?: ('ORD-'.$order->id)),
             'payment_type_id' => 1, // 1: Bên gửi (Shop) trả phí cước GHN, tiền ship đã được cộng vào cod_amount để GHN thu hộ và đối soát lại cho shop
             'note' => $customData['note'] ?? $order->note ?? 'Hàng giá trị cao, vui lòng cho xem và thử hàng.',
             'required_note' => $customData['required_note'] ?? 'CHOTHUHANG',
@@ -183,9 +189,9 @@ class GhnService
             'return_phone' => '0345155356',
             'return_address' => '41A Phú Diễn, Phường Phú Diễn, Quận Bắc Từ Liêm, Hà Nội',
             'return_district_id' => $this->fromDistrictId,
-            'to_name' => $order->shipping_name ?: 'Khách hàng',
-            'to_phone' => $order->phone ?: $order->shipping_phone ?: '0901234567',
-            'to_address' => $order->shipping_address ?: '123 Lê Lợi, Phường Tân Định, Quận 1, TP Hồ Chí Minh',
+            'to_name' => $toName,
+            'to_phone' => $toPhone,
+            'to_address' => $toAddress,
             'to_district_id' => $toDistrictId,
             'to_ward_code' => $toWardCode,
             'cod_amount' => ($order->payment_method === 'cod') ? (int) $order->total_amount : 0,
@@ -208,7 +214,11 @@ class GhnService
         ])->post("{$this->baseUrl}/v2/shipping-order/create", $payload);
 
         if (! $response->successful()) {
-            Log::error('GHN createShippingOrder error', ['payload' => $payload, 'status' => $response->status(), 'body' => $response->body()]);
+            Log::error('GHN createShippingOrder error', [
+                'order_id' => $order->id,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
             $msg = $response->json('message') ?? $response->json('code_message_value') ?? 'Không thể tạo đơn giao hàng qua GHN.';
             throw new Exception($msg);
         }

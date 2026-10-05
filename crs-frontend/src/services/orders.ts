@@ -1,4 +1,5 @@
 import api from './api'
+import axios from 'axios'
 import type { Order, OrderItem } from '../types'
 
 export interface CreateOrderPayload {
@@ -47,15 +48,20 @@ export async function createOrder(payload: CreateOrderPayload) {
   }
 }
 
-export async function getMomoPayUrl(orderId: number | string, amount?: number): Promise<string | null> {
-  try {
-    const response = await api.post('/payment/momo/start', { order_id: Number(orderId), amount: amount ?? 50000 })
-    return response.data?.data?.pay_url ?? response.data?.pay_url ?? null
-  } catch (error: any) {
-    if (error?.response?.data?.errors) {
-      console.log('Lỗi validation:', error.response.data.errors)
-    }
+export async function getMomoPayUrl(orderId: number): Promise<string | null> {
+  if (!Number.isSafeInteger(orderId) || orderId < 1) {
     return null
+  }
+
+  try {
+    const response = await api.post('/payment/momo/start', { order_id: orderId })
+    return response.data?.data?.pay_url ?? response.data?.pay_url ?? null
+  } catch (error) {
+    if (axios.isAxiosError<{ message?: string }>(error)) {
+      console.error('MoMo không thể khởi tạo thanh toán:', error.response?.data?.message ?? error.message)
+      throw new Error(error.response?.data?.message ?? 'Không thể khởi tạo thanh toán MoMo.')
+    }
+    throw error
   }
 }
 
@@ -142,6 +148,7 @@ export function mapBackendOrder(raw: Record<string, any>): Order {
 
   return {
     id: orderCode,
+    backendId: Number.isSafeInteger(Number(raw.id)) && Number(raw.id) > 0 ? Number(raw.id) : undefined,
     date,
     status: raw.order_status ?? raw.status ?? 'pending',
     paymentStatus: raw.payment_status ?? 'unpaid',

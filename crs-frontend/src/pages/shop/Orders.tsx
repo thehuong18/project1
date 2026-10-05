@@ -91,10 +91,10 @@ export function Orders() {
   const { orders, ordersLoading, refreshOrders, addToCart, user, cancelOrder, setCartDrawerOpen } = useApp()
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null)
-  const [payingOrderId, setPayingOrderId] = useState<string | number | null>(null)
+  const [payingOrderId, setPayingOrderId] = useState<number | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const handlePayMoMo = async (orderId: string | number) => {
+  const handlePayMoMo = async (orderId: number) => {
     try {
       setPayingOrderId(orderId)
       const payUrl = await getMomoPayUrl(orderId)
@@ -103,8 +103,8 @@ export function Orders() {
       } else {
         toast.error('Không thể khởi tạo cổng thanh toán MoMo.')
       }
-    } catch {
-      toast.error('Lỗi kết nối cổng thanh toán MoMo.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Lỗi kết nối cổng thanh toán MoMo.')
     } finally {
       setPayingOrderId(null)
     }
@@ -277,7 +277,8 @@ export function Orders() {
               const needsPayment =
                 order.paymentMethod === 'momo' &&
                 order.paymentStatus !== 'paid' &&
-                order.status !== 'cancelled'
+                order.status !== 'cancelled' &&
+                order.backendId !== undefined
               const isDelivered =
                 order.status === 'delivered' || order.status === 'paid'
 
@@ -480,12 +481,12 @@ export function Orders() {
                       {needsPayment && (
                         <button
                           type="button"
-                          onClick={() => handlePayMoMo(order.id)}
-                          disabled={payingOrderId === order.id}
+                          onClick={() => order.backendId && handlePayMoMo(order.backendId)}
+                          disabled={payingOrderId === order.backendId}
                           className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 px-4 py-2.5 font-black text-white hover:brightness-110 transition shadow-lg shadow-pink-500/20 cursor-pointer disabled:opacity-50"
                         >
                           <CreditCard size={15} />{' '}
-                          {payingOrderId === order.id ? 'Đang kết nối...' : 'Thanh toán MoMo'}
+                          {payingOrderId === order.backendId ? 'Đang kết nối...' : 'Thanh toán MoMo'}
                         </button>
                       )}
 
@@ -899,15 +900,16 @@ export function Orders() {
 
                       {selectedOrder.paymentMethod === 'momo' &&
                         selectedOrder.paymentStatus !== 'paid' &&
-                        selectedOrder.status !== 'cancelled' && (
+                        selectedOrder.status !== 'cancelled' &&
+                        selectedOrder.backendId !== undefined && (
                           <button
                             type="button"
-                            onClick={() => handlePayMoMo(selectedOrder.id)}
-                            disabled={payingOrderId === selectedOrder.id}
+                            onClick={() => selectedOrder.backendId && handlePayMoMo(selectedOrder.backendId)}
+                            disabled={payingOrderId === selectedOrder.backendId}
                             className="flex items-center gap-1.5 rounded-xl bg-pink-500 px-5 py-2.5 text-xs font-black text-white hover:bg-pink-600 transition shadow-md shadow-pink-500/20 cursor-pointer disabled:opacity-50"
                           >
                             <CreditCard size={14} />{' '}
-                            {payingOrderId === selectedOrder.id ? 'Đang kết nối...' : 'Thanh toán MoMo'}
+                            {payingOrderId === selectedOrder.backendId ? 'Đang kết nối...' : 'Thanh toán MoMo'}
                           </button>
                         )}
 

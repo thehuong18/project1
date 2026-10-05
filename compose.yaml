@@ -1,0 +1,242 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the root .env file}
+      MYSQL_ROOT_HOST: "%"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  api-gateway:
+    build: ./api-gateway
+    restart: unless-stopped
+    environment:
+      APP_NAME: Striker
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      PORT: "10000"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: api_gateway
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the root .env file}
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+      AUTH_SERVICE_URL: http://auth-service:10000
+      CATALOG_SERVICE_URL: http://catalog-service:10000
+      ORDER_SERVICE_URL: http://order-service:10000
+      PAYMENT_SERVICE_URL: http://payment-service:10000
+    ports:
+      - "8000:10000"
+    volumes:
+      - gateway_storage:/var/www/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:10000/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  auth-service:
+    build: ./auth-service
+    restart: unless-stopped
+    environment:
+      APP_NAME: Striker
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8001
+      PORT: "10000"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: auth_service
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the root .env file}
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+    ports:
+      - "8001:10000"
+    volumes:
+      - auth_storage:/var/www/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:10000/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  catalog-service:
+    build: ./catalog-service
+    restart: unless-stopped
+    environment:
+      APP_NAME: Striker
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8002
+      PORT: "10000"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: catalog_service
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the root .env file}
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+    ports:
+      - "8002:10000"
+    volumes:
+      - catalog_storage:/var/www/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:10000/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  order-service:
+    build: ./order-service
+    restart: unless-stopped
+    environment:
+      APP_NAME: Striker
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8003
+      PORT: "10000"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: order_service
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the root .env file}
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+      GHN_BASE_URL: ${GHN_BASE_URL:-https://dev-online-gateway.ghn.vn/shiip/public-api}
+      GHN_TOKEN: ${GHN_TOKEN:-}
+      GHN_SHOP_ID: ${GHN_SHOP_ID:-}
+      GHN_FROM_DISTRICT_ID: ${GHN_FROM_DISTRICT_ID:-1482}
+      PAYMENT_SERVICE_SECRET: ${PAYMENT_SERVICE_SECRET:?Set PAYMENT_SERVICE_SECRET in the root .env file}
+    ports:
+      - "8003:10000"
+    volumes:
+      - order_storage:/var/www/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:10000/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  payment-service:
+    build: ./payment-service
+    restart: unless-stopped
+    environment:
+      APP_NAME: Striker
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8004
+      PORT: "10000"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: payment_service
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the root .env file}
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+      MOMO_ENDPOINT: ${MOMO_ENDPOINT:-https://test-payment.momo.vn/v2/gateway/api/create}
+      MOMO_PARTNER_CODE: ${MOMO_PARTNER_CODE:-}
+      MOMO_ACCESS_KEY: ${MOMO_ACCESS_KEY:-}
+      MOMO_SECRET_KEY: ${MOMO_SECRET_KEY:-}
+      MOMO_REDIRECT_URL: ${MOMO_REDIRECT_URL:-http://localhost:8000/api/payment/momo/callback}
+      MOMO_IPN_URL: ${MOMO_IPN_URL:-http://localhost:8000/api/payment/momo/ipn}
+      MOMO_REQUEST_TYPE: ${MOMO_REQUEST_TYPE:-payWithATM}
+      FRONTEND_URL: http://localhost:5173
+      ORDER_SERVICE_URL: http://order-service:10000
+      PAYMENT_SERVICE_SECRET: ${PAYMENT_SERVICE_SECRET:?Set PAYMENT_SERVICE_SECRET in the root .env file}
+    ports:
+      - "8004:10000"
+    volumes:
+      - payment_storage:/var/www/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:10000/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  crs-frontend:
+    build: ./crs-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000/api
+      VITE_STORAGE_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5173').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  mysql_data:
+  gateway_storage:
+  auth_storage:
+  catalog_storage:
+  order_storage:
+  payment_storage:

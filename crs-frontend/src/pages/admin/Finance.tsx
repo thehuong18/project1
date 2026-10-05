@@ -502,7 +502,7 @@ export const Finance: React.FC = () => {
             >
               <option value="">Tất cả phương thức</option>
               <option value="cod">COD (Tiền mặt khi nhận)</option>
-              <option value="momo">MoMo QR / ATM</option>
+              <option value="momo">MoMo · Thẻ ngân hàng</option>
             </select>
           </div>
           <div>
@@ -694,7 +694,7 @@ export const Finance: React.FC = () => {
                   <tr className="hover:bg-slate-800/40 transition">
                     <td className="px-4 py-3 font-bold text-white flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-pink-400 shadow-sm" />
-                      MoMo QR / ATM
+                      MoMo · Thẻ ngân hàng
                     </td>
                     <td className="px-4 py-3 text-right font-medium">{summaryStats.methodBreakdown.momo.totalCount}</td>
                     <td className="px-4 py-3 text-right font-semibold text-slate-300">

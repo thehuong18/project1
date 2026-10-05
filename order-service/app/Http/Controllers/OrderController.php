@@ -231,6 +231,14 @@ class OrderController extends Controller
      */
     public function markPaid(Request $request, $order): JsonResponse
     {
+        $paymentServiceSecret = (string) config('services.payment_service.secret');
+        abort_unless(
+            $paymentServiceSecret !== ''
+                && hash_equals($paymentServiceSecret, (string) $request->header('X-Payment-Service-Secret')),
+            403,
+            'Only the payment service can mark an order as paid.',
+        );
+
         $orderModel = $order instanceof Order
             ? $order
             : Order::where('id', $order)->orWhere('order_number', $order)->orWhere('order_code', $order)->first();

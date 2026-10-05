@@ -155,7 +155,7 @@ export const Orders: React.FC = () => {
   // GHN API Action: Push order to Giao Hàng Nhanh
   const handleCreateGHNOrder = async (order: Order) => {
     try {
-      const response = await api.post(`/orders/${order.id}/ship-ghn`);
+      const response = await api.post(`/orders/${order.id}/ghn-ship`);
       const ghnCode = response.data?.ghn_code ?? response.data?.data?.ghn_code ?? response.data?.data?.order_code;
 
       if (!ghnCode) {
@@ -337,24 +337,17 @@ export const Orders: React.FC = () => {
       const order = ordersToProcess[i];
       setBatchProgress({ current: i + 1, total: ordersToProcess.length });
       try {
-        const response = await api.post(`/orders/${order.id}/ship-ghn`);
+        const response = await api.post(`/orders/${order.id}/ghn-ship`);
         const ghnCode =
           response.data?.ghn_code ??
           response.data?.data?.ghn_code ??
           response.data?.data?.order_code;
-        if (ghnCode) {
-          successCount++;
-        } else {
-          await api.patch(`/orders/${order.id}/status`, { order_status: 'processing' });
-          successCount++;
+        if (!ghnCode) {
+          throw new Error(response.data?.message ?? 'Không nhận được mã vận đơn từ GHN API.');
         }
+        successCount++;
       } catch {
-        try {
-          await api.patch(`/orders/${order.id}/status`, { order_status: 'processing' });
-          successCount++;
-        } catch {
-          failCount++;
-        }
+        failCount++;
       }
     }
 

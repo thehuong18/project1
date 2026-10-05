@@ -164,26 +164,9 @@ class OrderService
         // 2. External Call: Deduct stock from Catalog Service (Outside Transaction)
         $this->catalogService->deductStock($orderedItems);
 
-        // 3. External Call: Generate MoMo Payment URL via Payment Service (Port 8004)
-        $payUrl = null;
-        if ($order->payment_method === 'momo') {
-            try {
-                $paymentServiceUrl = rtrim((string) config('services.microservices.payment', env('PAYMENT_SERVICE_URL', 'http://127.0.0.1:8004')), '/');
-                $response = Http::timeout(6)->post("{$paymentServiceUrl}/api/payment/momo/start", [
-                    'order_id' => $order->id,
-                    'amount' => $order->total_amount,
-                    'user_id' => $order->user_id,
-                    'order_code' => $order->order_code ?? $order->order_number,
-                ]);
-                $payUrl = $response->json('data.pay_url');
-            } catch (Exception $ex) {
-                Log::warning('Lỗi gọi sang payment-service để tạo link MoMo: ' . $ex->getMessage());
-            }
-        }
-
         return [
             'order' => $order,
-            'pay_url' => $payUrl,
+            'pay_url' => null,
         ];
     }
 

@@ -32,8 +32,8 @@ Hệ thống được thiết kế theo mô hình **Decoupled Microservices** ph
 │ • Users & Admin  │  │ • Categories       │  │ • Orders & Items │  │ • MoMo Payment   │  │ • GHN Shipping   │
 │ • User Addresses │  │ • Brands           │  │ • Cart & Items   │  │ • Transactions   │  │   Fee & Tracking │
 │ • Live Messages  │  │ • Products & Tags  │  │ • Coupons/Voucher│  │ • Payment Logs   │  │ • MoMo Sandbox   │
-│ • JWT / Password │  │ • Variants/Banners │  │ • Product Reviews│  │ • IPN Webhooks   │  │   AIO QR & ATM    │
-│ • DB: auth_db    │  │ • DB: catalog_db   │  │ • DB: order_db   │  │ • DB: payment_db │  │                  │
+│ • JWT / Password │  │ • Variants/Banners │  │ • Product Reviews│  │ • IPN Webhooks   │  │  Thẻ ngân hàng   │
+│ • DB: auth_service│ │ • DB: catalog_service││ • DB: order_service││ • DB: payment_service│ │              │
 └──────────────────┘  └────────────────────┘  └──────────────────┘  └──────────────────┘  └──────────────────┘
 ```
 
@@ -57,7 +57,7 @@ graph TD
     Gateway -->|Proxy /api/payment, /api/finance| Payment
     
     Order -->|Tính phí & Tạo vận đơn| GHN
-    Payment -->|Ký số & Tạo mã QR/URL| MoMo
+    Payment -->|Ký số & Tạo URL thanh toán thẻ| MoMo
     MoMo -.->|IPN Webhook Callback| Payment
 ```
 
@@ -107,9 +107,9 @@ sequenceDiagram
     FE->>PaySvc: POST /api/payment/momo/create (order_id, amount)
     Note over PaySvc: Tạo signature HMAC-SHA256 từ secretKey
     PaySvc->>MoMo: POST /v2/gateway/api/create
-    MoMo-->>PaySvc: Trả về payUrl & qrCodeUrl
+    MoMo-->>PaySvc: Trả về payUrl thanh toán thẻ ngân hàng
     PaySvc-->>FE: Điều hướng người dùng sang Cổng MoMo
-    User->>MoMo: Quét mã QR / Xác nhận thanh toán trên App MoMo
+    User->>MoMo: Chọn ngân hàng, nhập thông tin thẻ và xác nhận giao dịch
     MoMo->>PaySvc: POST /api/payment/momo/ipn (Webhook ngầm)
     Note over PaySvc: Kiểm tra chữ ký số IPN -> Cập nhật payment_status = 'paid'
     MoMo-->>FE: Redirect về /payment/callback
@@ -169,7 +169,7 @@ sequenceDiagram
 
 ```
 ┌──────────────────────────────────────┐       ┌──────────────────────────────────────┐
-│        striker_auth_db (:8001)       │       │       striker_catalog_db (:8002)     │
+│        auth_service (:8001)          │       │        catalog_service (:8002)       │
 ├──────────────────────────────────────┤       ├──────────────────────────────────────┤
 │ • users (id, name, email, role...)   │       │ • categories (id, name, slug, icon)  │
 │ • addresses (province, district, ward│       │ • brands (id, name, slug, logo)      │
@@ -178,7 +178,7 @@ sequenceDiagram
                                                │ • banners (id, title, image, link)   │
                                                └──────────────────────────────────────┘
 ┌──────────────────────────────────────┐       ┌──────────────────────────────────────┐
-│        striker_order_db (:8003)      │       │       striker_payment_db (:8004)     │
+│        order_service (:8003)         │       │        payment_service (:8004)       │
 ├──────────────────────────────────────┤       ├──────────────────────────────────────┤
 │ • orders (id, code, totals, status)  │       │ • payments (id, order_id, amount...) │
 │ • order_items (product, price, qty)  │       │ • payment_transactions (Lab 9)       │
@@ -249,7 +249,7 @@ sequenceDiagram
 
 ### 👤 Thành viên 5: Cổng Thanh toán MoMo/COD, Dashboard & Báo cáo Tài chính (Lab 9)
 * **Nhánh Git:** `feature/payment-momo-dashboard-finance`
-* **Nhiệm vụ:** Tích hợp MoMo Sandbox (QR/URL HMAC-SHA256, Webhook IPN), Bảng điều khiển KPI/Spline Chart, Quản trị Báo cáo Tài chính & Đối soát giao dịch (`Finance.tsx`).
+* **Nhiệm vụ:** Tích hợp MoMo Sandbox thanh toán thẻ ngân hàng (HMAC-SHA256, Webhook IPN), Bảng điều khiển KPI/Spline Chart, Quản trị Báo cáo Tài chính & Đối soát giao dịch (`Finance.tsx`).
 * **Mã nguồn:**
   - `payment-service/app/Http/Controllers/MoMoPaymentController.php`, `DashboardController.php`, `PaymentLogController.php`
   - `payment-service/app/Models/Payment.php`, `PaymentLog.php`, `Transaction.php`, `database/migrations/*`
@@ -260,12 +260,40 @@ sequenceDiagram
 
 ## 🚀 6. HƯỚNG DẪN CÀI ĐẶT & KHỞI CHẠY HỆ THỐNG
 
+### Chạy toàn bộ dự án bằng Docker (khuyến nghị khi chia sẻ)
+- Cài **Docker Desktop** và bật Docker Engine.
+- Tại thư mục gốc dự án, tạo file cấu hình local từ mẫu:
+  ```powershell
+  Copy-Item .env.docker.example .env
+  ```
+- Khởi chạy cả MySQL, 5 backend services và frontend:
+  ```powershell
+  docker compose up --build -d
+  ```
+- Compose tự tạo 5 database riêng, chạy migration và sinh APP_KEY riêng cho từng service. Database, file storage và các key local được giữ trong Docker named volumes; không cần cài PHP, Composer, Node.js hay MySQL trên máy host.
+- Kiểm tra tình trạng:
+  ```powershell
+  docker compose ps
+  docker compose logs -f
+  ```
+- Mở frontend tại `http://localhost:5173`; API Gateway tại `http://localhost:8000`.
+- Seed dữ liệu demo (tuỳ chọn, chạy một lần sau khi các container đã healthy):
+  ```powershell
+  docker compose exec auth-service php artisan db:seed --force
+  docker compose exec catalog-service php artisan db:seed --force
+  docker compose exec order-service php artisan db:seed --force
+  ```
+  Tài khoản demo: `admin@striker.vn` / `123456`, `user@striker.vn` / `123456`.
+- Dừng hệ thống nhưng giữ dữ liệu: `docker compose down`. Xoá toàn bộ dữ liệu Docker local: `docker compose down -v`.
+- GHN và MoMo cần credentials riêng; điền chúng vào `.env` ở thư mục gốc trước khi chạy Compose. Cấu hình mặc định trong file mẫu chỉ dành cho local development, không dùng để deploy. Để MoMo gửi IPN về máy local, cần HTTPS tunnel và đặt URL công khai cho `MOMO_IPN_URL`.
+
 ### 1. Yêu cầu môi trường:
-- PHP >= 8.2 & Composer
+- PHP >= 8.3 & Composer
 - Node.js >= 18.x & npm
 - MySQL (XAMPP / Laragon / Docker)
 
 ### 2. Cài đặt các gói phụ thuộc & Database:
+Sau khi sao chép `.env.example`, điền mật khẩu MySQL và kiểm tra mỗi service dùng database riêng (`api_gateway`, `auth_service`, `catalog_service`, `order_service`, `payment_service`).
 ```bash
 # Cài đặt thư viện cho 5 Microservices:
 cd api-gateway && composer install && copy .env.example .env && php artisan key:generate
@@ -278,7 +306,15 @@ cd ../payment-service && composer install && copy .env.example .env && php artis
 cd ../crs-frontend && npm install
 ```
 
-### 3. Khởi chạy toàn bộ hệ thống (1 Lệnh duy nhất):
+### 3. Cấu hình thanh toán MoMo:
+- Điền `MOMO_PARTNER_CODE`, `MOMO_ACCESS_KEY` và `MOMO_SECRET_KEY` của cùng một ứng dụng MoMo Sandbox vào `payment-service/.env`.
+- Đặt `MOMO_REQUEST_TYPE=payWithATM` để mở luồng thẻ ngân hàng nội địa; không dùng `captureWallet` nếu không muốn thanh toán bằng ví/QR.
+- Đặt `ORDER_SERVICE_URL=http://127.0.0.1:8003` trong `payment-service/.env`.
+- Đặt cùng một giá trị bí mật dài, ngẫu nhiên ở `PAYMENT_SERVICE_SECRET` trong `.env` của cả `payment-service` và `order-service`. Có thể tạo giá trị bằng `php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"`.
+- `MOMO_IPN_URL` cần là HTTPS công khai vì MoMo không thể gọi `localhost`. `MOMO_REDIRECT_URL` có thể trỏ về Gateway local nếu thanh toán trên cùng máy; nếu dùng thiết bị khác hoặc muốn kiểm thử callback qua URL công khai, dùng HTTPS tunnel trỏ đến port `8000` với đường dẫn `/api/payment/momo/callback`. Đặt IPN tunnel tương ứng ở `/api/payment/momo/ipn`.
+- Sau khi chỉnh `.env`, chạy `php artisan config:clear` trong `payment-service` và khởi động lại các service. Đảm bảo đã migrate database của `payment-service`.
+
+### 4. Khởi chạy toàn bộ hệ thống (1 Lệnh duy nhất):
 Mở PowerShell tại thư mục gốc của dự án:
 ```powershell
 ./start-all.ps1

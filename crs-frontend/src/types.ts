@@ -132,6 +132,7 @@ export type User = {
 
 export type Order = {
   id: string
+  backendId?: number
   date: string
   status: OrderStatus
   paymentStatus: PaymentStatus

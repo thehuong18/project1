@@ -24,6 +24,21 @@ if (( $# > 0 )); then
     exec su-exec www-data "$@"
 fi
 
+if [[ -z "${APP_KEY:-}" && "${APP_ENV:-}" == "local" ]]; then
+    key_file=storage/app/docker-app-key
+    mkdir -p "$(dirname "$key_file")"
+    if [[ -s "$key_file" ]]; then
+        APP_KEY="$(<"$key_file")"
+    else
+        APP_KEY="$(su-exec www-data php artisan key:generate --show)"
+        umask 077
+        printf '%s' "$APP_KEY" > "$key_file"
+        chown www-data:www-data "$key_file"
+        chmod 600 "$key_file"
+    fi
+    export APP_KEY
+fi
+
 : "${APP_KEY:?Set a persistent APP_KEY before starting the application}"
 : "${APP_URL:?Set APP_URL to the public HTTPS address}"
 export PORT="${PORT:-10000}"

@@ -214,6 +214,8 @@ export function Checkout() {
     }
 
     let momoRedirectUrl: string | null = null
+    let backendOrderId: number | undefined
+    let momoErrorMessage: string | null = null
 
     // Format phone chuẩn 10 số bắt đầu bằng 0
     let formattedPhone = (selectedAddress.phone || user?.phone || '').trim().replace(/\s+/g, '')
@@ -269,15 +271,28 @@ export function Checkout() {
             image: item.image || (item as any).image_url || '',
           })),
         })
+        const createdId = Number(createResult?.order?.id ?? createResult?.order?.order_id)
+        if (Number.isSafeInteger(createdId) && createdId > 0) {
+          backendOrderId = createdId
+          newOrder.backendId = createdId
+          newOrder.id = String(
+            createResult?.order?.order_code ??
+            createResult?.order?.order_number ??
+            newOrder.id
+          )
+        }
 
         // Lấy payUrl từ response createOrder hoặc fetch riêng từ start-momo
         if (isMoMo) {
           if (createResult?.payUrl) {
             momoRedirectUrl = createResult.payUrl
           } else {
-            const createdOrderId = createResult?.order?.id || createResult?.order?.order_id
-            if (createdOrderId) {
-              momoRedirectUrl = await getMomoPayUrl(createdOrderId)
+            if (backendOrderId) {
+              try {
+                momoRedirectUrl = await getMomoPayUrl(backendOrderId)
+              } catch (error) {
+                momoErrorMessage = error instanceof Error ? error.message : 'Không thể khởi tạo thanh toán MoMo.'
+              }
             }
           }
         }
@@ -308,10 +323,14 @@ export function Checkout() {
         window.location.href = momoRedirectUrl
         return
       } else {
-        toast.success('🎉 Đặt hàng thành công!', {
-          description: `Đơn hàng MoMo #${orderId} đã được tạo. Vui lòng hoàn tất thanh toán trong Lịch sử đơn hàng.`,
-          duration: 5000,
-        })
+        if (momoErrorMessage) {
+          toast.error(`Đã tạo đơn hàng nhưng chưa khởi tạo được thanh toán MoMo: ${momoErrorMessage}`, { duration: 7000 })
+        } else {
+          toast.success('🎉 Đặt hàng thành công!', {
+            description: `Đơn hàng MoMo #${orderId} đã được tạo. Vui lòng hoàn tất thanh toán trong Lịch sử đơn hàng.`,
+            duration: 5000,
+          })
+        }
         navigate('/orders')
       }
     } else {
@@ -501,9 +520,9 @@ export function Checkout() {
                   },
                   {
                     id: 'momo' as const,
-                    title: 'Thanh toán qua Ví MoMo / Thẻ ATM',
-                    desc: 'Cổng thanh toán MoMo & Thẻ ATM nội địa (NAPAS) - không yêu cầu mã CVC',
-                    badge: 'Ví điện tử MoMo',
+                    title: 'Thẻ ngân hàng nội địa qua MoMo',
+                    desc: 'Chọn ngân hàng và xác nhận trên cổng MoMo; không cần quét QR hoặc mở ứng dụng MoMo.',
+                    badge: 'Thẻ ATM / NAPAS',
                     badgeColor: 'bg-pink-500/20 text-pink-300 border-pink-500/30',
                     iconBg: 'bg-gradient-to-br from-[#A50064] to-[#D82D8B] text-white',
                     customIcon: (
